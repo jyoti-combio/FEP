@@ -1,0 +1,153 @@
+#############################################################
+## JOB DESCRIPTION                                         ##
+#############################################################
+
+# FEP forward
+
+#############################################################
+## ADJUSTABLE PARAMETERS                                   ##
+#############################################################
+
+#specify the location of the psf and pdb files
+structure          ionized.psf
+coordinates        ionized.pdb
+bincoordinates     forwardcomplex_50ns_min.coor
+extendedsystem     forwardcomplex_50ns_min.xsc
+
+# specify the temperature here 
+set temperature    310
+set outputname     backwardcomplex_50ns_min
+
+#starting from scratch
+temperature        $temperature
+
+#############################################################
+## SIMULATION PARAMETERS                                   ##
+#############################################################
+
+# Input
+
+# specify the parameter files location
+paraTypeCharmm	    on
+parameters          par_all36_prot.prm
+parameters          fza.prm
+parameters          par_all36_cgenff.prm
+parameters	        TIPS3P_water_ions.prm
+parameters          par_all36_lipid.prm
+parameters          par_all36_carb.prm
+
+# Force-Field Parameters
+# these parameters are usually fixed for Charmm ff
+exclude             scaled1-4
+1-4scaling          1.0
+switching           on
+
+# the next 4 parameters can be edited as per your CPU power and time
+
+# beyond cutoff electrostatics interactions aren't calculated;
+cutoff              12.0
+
+# switchdist and pairlistdist keep a track on the atoms moved
+# they basically control that the atom doesn't move 
+# arbitrarily far in one step
+switchdist          10.0
+pairlistdist        14.0
+
+# stepspercycle is the number of cycles after which namd will 
+# update the pairlistdist  
+stepspercycle       10
+
+# Integrator Parameters
+timestep            2.0
+rigidBonds          all
+nonbondedFreq       1
+vdwGeometricSigma   yes
+fullElectFrequency  2  
+pairlistsperCycle   2
+
+# Periodic Boundary Conditions
+cellBasisVector1 84.49200057983398 0 0
+cellBasisVector2 0 91.58300018310547 0
+cellBasisVector3 0 0 94.23800659179688
+cellOrigin 18.123632431030273 19.477275848388672 152.22915649414063
+
+# PME (for full-system periodic electrostatics)
+PME                 yes
+PMEGridSpacing      1.0
+
+#manual grid definition
+#PMEGridSizeX        45
+#PMEGridSizeY        45
+#PMEGridSizeZ        100
+wrapAll              on
+
+# Constant Temperature Control
+langevin            on    ;# do langevin dynamics
+langevinDamping     1     ;# damping coefficient (gamma) of 1/ps
+langevinTemp        $temperature
+langevinHydrogen    off    ;# don't couple langevin bath to hydrogens
+
+# Constant Pressure Control (variable volume)
+useGroupPressure      yes ;# needed for rigidBonds
+useFlexibleCell       no
+useConstantArea       no
+
+langevinPiston        on
+langevinPistonTarget  1.01325 ;#  in bar -> 1 atm
+langevinPistonPeriod  100.0
+langevinPistonDecay   50.0
+langevinPistonTemp    $temperature
+
+
+
+# Output
+# all output files will have the same name but different extensions
+# our outputname is final_min, so
+# final_min.dcd final_min.coor etc files will be created
+
+#output
+
+outputName          $outputname
+restartfreq         1000
+dcdfreq             1000
+outputEnergies      1000
+outputPressure      1000
+
+# 1 step = 2 fs
+# 500 step = 1000 fs = 1 ps
+# remember : 1 step = 2 fs; 1000fs = 1ps and 1000ps = 1ns
+# remember : 1ns = 1000ps and 1ps = 1000fs
+# MD Simulations are run for 40-60 ns range
+# so steps = 40*1000*1000/2 = (time/2)*10^6 steps
+
+
+#############################################################
+## EXTRA PARAMETERS                                        ##
+#############################################################
+usePMECUDA              on
+SOAintegrate            on
+CUDASOAintegrate        on
+alchPMECUDA             on
+bondedCUDA              255
+
+# FEP PARAMETERS
+
+source                  fep.tcl
+
+alch                    on
+alchType                FEP
+alchFile                ionized.fep
+alchCol                 B
+alchOutFile             backwardcomplex_50ns_min.fepout
+alchOutFreq             10
+
+alchVdwLambdaEnd        1.0
+alchElecLambdaStart     0.5
+alchVdWShiftCoeff       4.0
+alchDecouple            off
+
+alchEquilSteps          200000  
+set numSteps            1000000  
+
+runFEP 1.0 0.0 -0.04 $numSteps
+
